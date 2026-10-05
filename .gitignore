@@ -2,9 +2,11 @@
 .venv/
 venv/
 env/
+ENV/
 
 # SQLite Database
 *.db
+smarthome.db
 *.sqlite
 *.sqlite3
 

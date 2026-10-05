@@ -3,44 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SmartHome">
-<link rel="apple-touch-icon" href="https://img.icons8.com/color/180/smart-home.png">
     <title>Smart Home Control Panel</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0f172a; color: #f8fafc; padding: 30px; margin: 0; }
-        h1 { text-align: center; color: #38bdf8; margin-bottom: 30px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
-        .card { background-color: #1e293b; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
-        .card h3 { margin-top: 0; color: #f1f5f9; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 20px; margin: 0; }
+        h1, h2 { text-align: center; color: #38bdf8; margin-bottom: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card-panel { background-color: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; margin-bottom: 25px; }
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+        
+        /* 📍 ΤΟ GRID ΣΟΥ */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background-color: #1e293b; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #334155; }
         .type-badge { background: #334155; color: #94a3b8; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; text-transform: uppercase; }
         .status { font-size: 1.1rem; margin: 15px 0; font-weight: bold; }
         .active { color: #4ade80; }
         .inactive { color: #f87171; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
         .btn-on { background-color: #22c55e; color: white; }
-        .btn-on:hover { background-color: #16a34a; }
         .btn-off { background-color: #ef4444; color: white; }
-        .btn-off:hover { background-color: #dc2626; }
+        .btn-logout { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; float: right; font-weight: bold; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <h1>🏠 Smart Home Simulation Dashboard</h1>
-    
-    <div id="devices-container" class="grid">
-        <!-- Εδώ θα εμφανιστούν αυτόματα οι συσκευές -->
+    <div class="container">
+        <button class="btn-logout" onclick="logout()">Αποσύνδεση</button>
+        <h1>🏠 Smart Home Control Panel</h1>
+        <p style="text-align: center; margin-bottom: 25px;">
+            Χρήστης: <b id="user-display"></b> <span id="role-badge"></span>
+        </p>
+
+        <!-- ΦΟΡΜΑ ΠΡΟΣΘΗΚΗΣ (ΕΜΦΑΝΙΖΕΤΑΙ ΜΟΝΟ ΣΤΟΥΣ ADMINS) -->
+        <div id="admin-panel" class="card-panel hidden" style="max-width: 500px; margin: 0 auto 30px auto;">
+            <h2>➕ Προσθήκη Συσκευής (Admin)</h2>
+            <input type="text" id="device-name" placeholder="Όνομα Συσκευής">
+            <select id="device-type">
+                <option value="light">Φως</option>
+                <option value="relay">Ρελέ / Διακόπτης</option>
+            </select>
+            <button class="btn btn-on" onclick="addDevice()">Προσθήκη</button>
+        </div>
+
+        <!-- GRID ΣΥΣΚΕΥΩΝ -->
+        <div id="devices-container" class="grid"></div>
     </div>
 
     <script>
-        // Φόρτωση όλων των συσκευών από το GET /devices/
+        function getAuthHeader() {
+            const token = localStorage.getItem('token');
+            return token ? { 'Authorization': 'Bearer ' + token } : {};
+        }
+
+        // Έλεγχος αν υπάρχει token - αλλιώς ανακατεύθυνση στο login.html
+        async function initDashboard() {
+            if (!localStorage.getItem('token')) {
+                window.location.href = '/static/login.html';
+                return;
+            }
+
+            try {
+                const resUser = await fetch('/users/me', { headers: getAuthHeader() });
+                if (!resUser.ok) { logout(); return; }
+                
+                const user = await resUser.json();
+                document.getElementById('user-display').innerText = user.username;
+                document.getElementById('role-badge').innerText = user.is_admin ? '(Admin 👑)' : '(User 👤)';
+
+                if (user.is_admin) {
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                }
+
+                loadDevices();
+            } catch (err) {
+                console.error('Init error:', err);
+            }
+        }
+
         async function loadDevices() {
             try {
-                const response = await fetch('/devices/');
+                const response = await fetch('/devices/', { headers: getAuthHeader() });
+                if (response.status === 401) { logout(); return; }
+
                 const devices = await response.json();
-                
                 const container = document.getElementById('devices-container');
                 container.innerHTML = '';
 
@@ -49,7 +96,7 @@
                     return;
                 }
 
-                devices.forEach(device => {
+                devices.forEach(function(device) {
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `
@@ -65,18 +112,37 @@
                     container.appendChild(card);
                 });
             } catch (err) {
-                console.error("Σφάλμα κατά τη φόρτωση των συσκευών:", err);
+                console.error('Error loading devices:', err);
             }
         }
 
-        // Αλλαγή κατάστασης συσκευής (ON/OFF) μέσω POST /devices/{id}/toggle
         async function toggleDevice(id) {
-            await fetch(`/devices/${id}/toggle`, { method: 'POST' });
-            loadDevices(); // Ανανέωση της οθόνης
+            await fetch('/devices/' + id + '/toggle', { method: 'POST', headers: getAuthHeader() });
+            loadDevices();
         }
 
-        // Φόρτωση συσκευών μόλις ανοίξει η σελίδα
-        loadDevices();
+        async function addDevice() {
+            const name = document.getElementById('device-name').value;
+            const type = document.getElementById('device-type').value;
+            if (!name) return alert('Δώστε όνομα συσκευής');
+
+            const url = '/devices/?name=' + encodeURIComponent(name) + '&device_type=' + encodeURIComponent(type);
+            const res = await fetch(url, { method: 'POST', headers: getAuthHeader() });
+
+            if (res.ok) {
+                document.getElementById('device-name').value = '';
+                loadDevices();
+            } else {
+                alert('Σφάλμα: Δεν έχετε δικαίωμα προσθήκης!');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/static/login.html';
+        }
+
+        initDashboard();
     </script>
 </body>
 </html>

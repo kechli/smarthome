@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home - Σύνδεση</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 20px; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card-panel { background-color: #1e293b; border-radius: 12px; padding: 30px; border: 1px solid #334155; width: 100%; max-width: 400px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        h1 { text-align: center; color: #38bdf8; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; background-color: #22c55e; color: white; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card-panel">
+        <h1>🔒 Σύνδεση</h1>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" class="btn">Σύνδεση</button>
+        </form>
+        <p id="auth-error" style="color:#f87171; text-align:center; margin-top:15px;"></p>
+    </div>
+
+    <script>
+        // Αν είναι ήδη συνδεδεμένος, τον στέλνουμε κατευθείαν στο dashboard
+        if (localStorage.getItem('token')) {
+            window.location.href = '/static/index.html';
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+
+            const formData = new URLSearchParams();
+            formData.append('username', u);
+            formData.append('password', p);
+
+            try {
+                const res = await fetch('/token', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('token', data.access_token);
+                    // 🚀 Μετάβαση στη σελίδα του Dashboard
+                    window.location.href = '/static/index.html';
+                } else {
+                    document.getElementById('auth-error').innerText = data.detail || 'Σφάλμα σύνδεσης';
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+            }
+        });
+    </script>
+</body>
+</html>

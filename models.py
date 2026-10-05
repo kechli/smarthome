@@ -22,3 +22,13 @@ class SensorReading(Base):
     value = Column(Float, nullable=False)      # π.χ. 23.5
     unit = Column(String, default="°C")        # π.χ. "°C"
     timestamp = Column(DateTime, default=datetime.utcnow) # Ώρα καταγραφής
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    
+    # 👈 ΕΔΩ προσθέτεις τη νέα γραμμή:
+    is_admin = Column(Boolean, default=False)
