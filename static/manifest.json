@@ -1,0 +1,17 @@
+{
+  "short_name": "SmartHome",
+  "name": "Smart Home PWA Dashboard",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "type": "image/png",
+      "sizes": "500x500"
+    }
+
+  ],
+  "start_url": "/static/login.html",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}
